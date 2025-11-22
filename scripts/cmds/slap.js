@@ -1,47 +1,44 @@
-const axios = require("axios");
+const DIG = require("discord-image-generation");
 const fs = require("fs-extra");
 
 module.exports = {
   config: {
     name: "slap",
-    aliases: ["batslap"],
-    version: "1.0",
-    author: "Arafat Da",
+    version: "1.1",
+    author: "NTKhang",
     countDown: 5,
     role: 0,
-    shortDescription: "Slap someone 😵",
-    longDescription: "Generates a slap/batslap image between you and tagged user",
+    shortDescription: "Batslap image",
+    longDescription: "Batslap image",
     category: "image",
-    guide: "{pn} @tag"
+    guide: {
+      en: "   {pn} @tag"
+    }
   },
 
-  onStart: async function ({ event, message, args }) {
-    const mention = Object.keys(event.mentions)[0];
-    if (!mention) return message.reply("Tag someone to slap!");
-
-    try {
-      // Get avatar URLs
-      const avatar1 = await global.utils.getAvatarUrl(event.senderID);
-      const avatar2 = await global.utils.getAvatarUrl(mention);
-
-      // API link
-      const api = `https://some-random-api.com/canvas/slap?avatar1=${avatar1}&avatar2=${avatar2}`;
-
-      const path = `${process.cwd()}/cache/slap_${Date.now()}.png`;
-
-      const res = await axios.get(api, { responseType: "arraybuffer" });
-      fs.writeFileSync(path, res.data);
-
-      message.reply(
-        {
-          body: "Booommm! 😵‍💫🔥",
-          attachment: fs.createReadStream(path)
-        },
-        () => fs.unlinkSync(path)
-      );
-    } catch (e) {
-      console.log(e);
-      message.reply("❌ Error generating slap image.");
+  langs: {
+    vi: {
+      noTag: "Bạn phải tag người bạn muốn tát"
+    },
+    en: {
+      noTag: "You must tag the person you want to slap"
     }
+  },
+
+  onStart: async function ({ event, message, usersData, args, getLang }) {
+    const uid1 = event.senderID;
+    const uid2 = Object.keys(event.mentions)[0];
+    if (!uid2)
+      return message.reply(getLang("noTag"));
+    const avatarURL1 = await usersData.getAvatarUrl(uid1);
+    const avatarURL2 = await usersData.getAvatarUrl(uid2);
+    const img = await new DIG.Batslap().getImage(avatarURL1, avatarURL2);
+    const pathSave = `${__dirname}/tmp/${uid1}_${uid2}Batslap.png`;
+    fs.writeFileSync(pathSave, Buffer.from(img));
+    const content = args.join(' ').replace(Object.keys(event.mentions)[0], "");
+    message.reply({
+      body: `${(content || "slap 🥴😵")}`,
+      attachment: fs.createReadStream(pathSave)
+    }, () => fs.unlinkSync(pathSave));
   }
 };
